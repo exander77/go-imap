@@ -68,7 +68,7 @@ func (info *MailboxInfo) Parse(fields []interface{}) error {
 func (info *MailboxInfo) Format() []interface{} {
 	name, _ := utf7.Encoder.String(info.Name)
 	// Thunderbird doesn't understand delimiters if not quoted
-	return []interface{}{FormatStringList(info.Attributes), Quoted(info.Delimiter), name}
+	return []interface{}{FormatStringList(info.Attributes), Quoted(info.Delimiter), Quoted(name)}
 }
 
 // TODO: optimize this
