@@ -758,6 +758,14 @@ func FormatParamList(params map[string]string) []interface{} {
 	return fields
 }
 
+func FormatParamListQuoted(params map[string]string) []interface{} {
+	fields := []interface{}{}
+	for key, value := range params {
+		fields = append(fields, Quoted(key), Quoted(value))
+	}
+	return fields
+}
+
 func (bs *BodyStructure) Parse(fields []interface{}) error {
 	if len(fields) == 0 {
 		return nil
