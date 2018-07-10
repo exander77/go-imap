@@ -12,6 +12,9 @@ import (
 	"github.com/emersion/go-imap/backend"
 )
 
+// Ticking interval for connection autoclose
+const TickInterval = 500 * time.Millisecond
+
 // Conn is a connection to a client.
 type Conn interface {
 	io.Reader
@@ -57,13 +60,14 @@ type Context struct {
 type conn struct {
 	*imap.Conn
 
-	s         *Server
-	ctx       *Context
-	l         sync.Locker
-	tlsConn   *tls.Conn
-	continues chan bool
-	responses chan imap.WriterTo
-	silentVal bool
+	s          *Server
+	ctx        *Context
+	l          sync.Locker
+	tlsConn    *tls.Conn
+	continues  chan bool
+	responses  chan imap.WriterTo
+	silentVal  bool
+	expiration int64
 }
 
 func newConn(s *Server, c net.Conn) *conn {
@@ -128,9 +132,9 @@ func (c *conn) setDeadline() {
 	if dur < MinAutoLogout {
 		dur = MinAutoLogout
 	}
-	t := time.Now().Add(dur)
 
-	c.Conn.SetDeadline(t)
+	c.expiration = dur.Nanoseconds() / TickInterval.Nanoseconds()
+
 }
 
 func (c *conn) WriteResp(r imap.WriterTo) error {
@@ -265,6 +269,21 @@ func (c *conn) serve() error {
 		return err
 	}
 
+	ticker := time.NewTicker(TickInterval)
+	closed := false
+	defer ticker.Stop()
+	c.setDeadline()
+
+	go func() {
+		for _ = range ticker.C {
+			c.expiration -= 1
+			if c.expiration < 0 {
+				closed = true
+				c.Close()
+			}
+		}
+	}()
+
 	for {
 		if c.ctx.State == imap.LogoutState {
 			return nil
@@ -309,6 +328,11 @@ func (c *conn) serve() error {
 					}
 				}
 			}
+		}
+
+		if closed {
+			// There's auto-closed connection
+			return nil
 		}
 
 		if res != nil {

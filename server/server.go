@@ -17,8 +17,9 @@ import (
 	"github.com/emersion/go-sasl"
 )
 
-// The minimum autologout duration defined in RFC 3501 section 5.4.
-const MinAutoLogout = 30 * time.Minute
+// The 30 minutes minimum autologout duration defined in RFC 3501 section 5.4.
+//const MinAutoLogout = 30 * time.Second
+const MinAutoLogout = 30 * time.Millisecond
 
 // A command handler.
 type Handler interface {
