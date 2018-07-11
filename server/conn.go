@@ -68,6 +68,7 @@ type conn struct {
 	responses  chan imap.WriterTo
 	silentVal  bool
 	expiration int64
+	closed     bool
 }
 
 func newConn(s *Server, c net.Conn) *conn {
@@ -92,6 +93,7 @@ func newConn(s *Server, c net.Conn) *conn {
 		tlsConn:   tlsConn,
 		continues: continues,
 		responses: responses,
+		closed:    false,
 	}
 
 	if s.Debug != nil {
@@ -150,6 +152,7 @@ func (c *conn) Close() error {
 		c.ctx.User.Logout()
 	}
 
+	c.closed = true
 	if err := c.Conn.Close(); err != nil {
 		return err
 	}
@@ -188,11 +191,13 @@ func (c *conn) send() {
 	// Send continuation requests
 	go func() {
 		for range c.continues {
-			res := &imap.ContinuationResp{Info: "send literal"}
-			if err := res.WriteTo(c.Writer); err != nil {
-				c.Server().ErrorLog.Println("cannot send continuation request: ", err)
-			} else if err := c.Writer.Flush(); err != nil {
-				c.Server().ErrorLog.Println("cannot flush connection: ", err)
+			if !c.closed {
+				res := &imap.ContinuationResp{Info: "send literal"}
+				if err := res.WriteTo(c.Writer); err != nil {
+					c.Server().ErrorLog.Println("cannot send continuation request: ", err)
+				} else if err := c.Writer.Flush(); err != nil {
+					c.Server().ErrorLog.Println("cannot flush connection: ", err)
+				}
 			}
 		}
 	}()
@@ -205,11 +210,13 @@ func (c *conn) send() {
 		// Request to send the response
 		c.l.Lock()
 
-		// Send the response
-		if err := res.WriteTo(c.Writer); err != nil {
-			c.Server().ErrorLog.Println("cannot send response: ", err)
-		} else if err := c.Writer.Flush(); err != nil {
-			c.Server().ErrorLog.Println("cannot flush connection: ", err)
+		if !c.closed {
+			// Send the response
+			if err := res.WriteTo(c.Writer); err != nil {
+				c.Server().ErrorLog.Println("cannot send response: ", err)
+			} else if err := c.Writer.Flush(); err != nil {
+				c.Server().ErrorLog.Println("cannot flush connection: ", err)
+			}
 		}
 
 		c.l.Unlock()
@@ -270,7 +277,6 @@ func (c *conn) serve() error {
 	}
 
 	ticker := time.NewTicker(TickInterval)
-	closed := false
 	defer ticker.Stop()
 	c.setDeadline()
 
@@ -278,7 +284,6 @@ func (c *conn) serve() error {
 		for _ = range ticker.C {
 			c.expiration -= 1
 			if c.expiration < 0 {
-				closed = true
 				c.Close()
 			}
 		}
@@ -297,7 +302,9 @@ func (c *conn) serve() error {
 		if err == io.EOF || c.ctx.State == imap.LogoutState {
 			return nil
 		}
-		c.setDeadline()
+		if !c.closed {
+			c.setDeadline()
+		}
 
 		if err != nil {
 			if imap.IsParseError(err) {
@@ -330,7 +337,7 @@ func (c *conn) serve() error {
 			}
 		}
 
-		if closed {
+		if c.closed {
 			// There's auto-closed connection
 			return nil
 		}
