@@ -285,6 +285,8 @@ func (c *conn) serve() error {
 			c.expiration -= 1
 			if c.expiration < 0 {
 				c.Close()
+				ticker.Stop()
+				return
 			}
 		}
 	}()
