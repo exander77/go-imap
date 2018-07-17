@@ -276,20 +276,22 @@ func (c *conn) serve() error {
 		return err
 	}
 
-	ticker := time.NewTicker(TickInterval)
-	defer ticker.Stop()
-	c.setDeadline()
+	if c.s.AutoLogout != 0 {
+		ticker := time.NewTicker(TickInterval)
+		defer ticker.Stop()
+		c.setDeadline()
 
-	go func() {
-		for _ = range ticker.C {
-			c.expiration -= 1
-			if c.expiration < 0 {
-				c.Close()
-				ticker.Stop()
-				return
+		go func() {
+			for _ = range ticker.C {
+				c.expiration -= 1
+				if c.expiration < 0 {
+					c.Close()
+					ticker.Stop()
+					return
+				}
 			}
-		}
-	}()
+		}()
+	}
 
 	for {
 		if c.ctx.State == imap.LogoutState {
