@@ -350,7 +350,10 @@ func (c *conn) serve() error {
 			c.l.Unlock()
 
 			if err := c.WriteResp(res); err != nil {
-				c.s.ErrorLog.Println("cannot write response:", err)
+				// ignore write error for BYE
+				if res.StatusRespType != imap.StatusBye {
+					c.s.ErrorLog.Println("cannot write response:", err)
+				}
 				c.l.Lock()
 				continue
 			}
