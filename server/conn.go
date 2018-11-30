@@ -196,7 +196,7 @@ func (c *conn) send() {
 				if err := res.WriteTo(c.Writer); err != nil {
 					c.Server().ErrorLog.Println("cannot send continuation request: ", err)
 				} else if err := c.Writer.Flush(); err != nil {
-					c.Server().ErrorLog.Println("cannot flush connection: ", err)
+					c.Server().ErrorLog.Println("cannot flush continuation connection: ", err)
 				}
 			}
 		}
@@ -210,12 +210,20 @@ func (c *conn) send() {
 		// Request to send the response
 		c.l.Lock()
 
+		info := ""
+		if servResp, ok := res.(*response); ok {
+			if imapRes, ok := servResp.response.(*imap.StatusResp); ok {
+				info = " '" + imapRes.Info + "'"
+			}
+		}
+
 		if !c.closed {
 			// Send the response
 			if err := res.WriteTo(c.Writer); err != nil {
-				c.Server().ErrorLog.Println("cannot send response: ", err)
+				c.Server().ErrorLog.Printf("cannot send response%s: %s", info, err)
 			} else if err := c.Writer.Flush(); err != nil {
-				c.Server().ErrorLog.Println("cannot flush connection: ", err)
+				info = " after" + info
+				c.Server().ErrorLog.Println("cannot flush connection%s: %s", info, err)
 			}
 		}
 
@@ -350,10 +358,7 @@ func (c *conn) serve() error {
 			c.l.Unlock()
 
 			if err := c.WriteResp(res); err != nil {
-				// ignore write error for BYE
-				if res.StatusRespType != imap.StatusBye {
-					c.s.ErrorLog.Println("cannot write response:", err)
-				}
+				c.s.ErrorLog.Printf("cannot write response '%s': %v", res.Info, err)
 				c.l.Lock()
 				continue
 			}
