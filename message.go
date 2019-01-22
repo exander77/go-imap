@@ -753,7 +753,7 @@ func ParseParamList(fields []interface{}) (params map[string]string, err error) 
 func FormatParamList(params map[string]string) []interface{} {
 	fields := []interface{}{}
 	for key, value := range params {
-		fields = append(fields, key, value)
+		fields = append(fields, Quoted(key), Quoted(value))
 	}
 	return fields
 }
@@ -912,7 +912,7 @@ func (bs *BodyStructure) Format() (fields []interface{}) {
 			fields = append(fields, part.Format())
 		}
 
-		fields = append(fields, bs.MimeSubType)
+		fields = append(fields, Quoted(bs.MimeSubType))
 
 		if bs.Extended {
 			extended := make([]interface{}, 4)
@@ -921,31 +921,31 @@ func (bs *BodyStructure) Format() (fields []interface{}) {
 				extended[0] = FormatParamList(bs.Params)
 			}
 			if bs.Disposition != "" {
-				extended[1] = bs.Disposition
+				extended[1] = Quoted(bs.Disposition)
 			}
 			if bs.Language != nil {
-				extended[2] = FormatStringList(bs.Language)
+				extended[2] = FormatQuotedStringList(bs.Language)
 			}
 			if bs.Location != nil {
-				extended[3] = FormatStringList(bs.Location)
+				extended[3] = FormatQuotedStringList(bs.Location)
 			}
 
 			fields = append(fields, extended...)
 		}
 	} else {
 		fields = make([]interface{}, 7)
-		fields[0] = bs.MimeType
-		fields[1] = bs.MimeSubType
+		fields[0] = Quoted(bs.MimeType)
+		fields[1] = Quoted(bs.MimeSubType)
 		fields[2] = FormatParamList(bs.Params)
 
 		if bs.Id != "" {
 			fields[3] = bs.Id
 		}
 		if bs.Description != "" {
-			fields[4] = bs.Description
+			fields[4] = Quoted(bs.Description)
 		}
 		if bs.Encoding != "" {
-			fields[5] = bs.Encoding
+			fields[5] = Quoted(bs.Encoding)
 		}
 
 		fields[6] = bs.Size
@@ -973,16 +973,16 @@ func (bs *BodyStructure) Format() (fields []interface{}) {
 			extended := make([]interface{}, 4)
 
 			if bs.Md5 != "" {
-				extended[0] = bs.Md5
+				extended[0] = Quoted(bs.Md5)
 			}
 			if bs.Disposition != "" {
-				extended[1] = bs.Disposition
+				extended[1] = Quoted(bs.Disposition)
 			}
 			if bs.Language != nil {
-				extended[2] = FormatStringList(bs.Language)
+				extended[2] = FormatQuotedStringList(bs.Language)
 			}
 			if bs.Location != nil {
-				extended[3] = FormatStringList(bs.Location)
+				extended[3] = FormatQuotedStringList(bs.Location)
 			}
 
 			fields = append(fields, extended...)

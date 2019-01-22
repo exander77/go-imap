@@ -34,6 +34,15 @@ func FormatStringList(list []string) (fields []interface{}) {
 	return
 }
 
+// Convert a string list to a quoted list.
+func FormatQuotedStringList(list []string) (fields []interface{}) {
+	fields = make([]interface{}, len(list))
+	for i, v := range list {
+		fields[i] = Quoted(v)
+	}
+	return
+}
+
 // Check if a string is 8-bit clean.
 func isAscii(s string) bool {
 	for _, c := range s {
