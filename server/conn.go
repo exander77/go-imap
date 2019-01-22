@@ -213,8 +213,14 @@ func (c *conn) send() {
 		info := ""
 		if servResp, ok := res.(*response); ok {
 			if imapRes, ok := servResp.response.(*imap.StatusResp); ok {
-				info = " '" + imapRes.Info + "'"
+				info = " tag " + imapRes.Tag + " '" + imapRes.Info + "'"
 			}
+			if info == "" {
+				info = "type `" + reflect.TypeOf(servResp) + "`"
+			}
+		}
+		if info == "" {
+			info = "type `" + reflect.TypeOf(res) + "`"
 		}
 
 		if !c.closed {
@@ -223,7 +229,7 @@ func (c *conn) send() {
 				c.Server().ErrorLog.Printf("cannot send response%s: %s", info, err)
 			} else if err := c.Writer.Flush(); err != nil {
 				info = " after" + info
-				c.Server().ErrorLog.Println("cannot flush connection%s: %s", info, err)
+				c.Server().ErrorLog.Printf("cannot flush connection%s: %s", info, err)
 			}
 		}
 
