@@ -217,11 +217,11 @@ func (c *conn) send() {
 				info = " tag " + imapRes.Tag + " '" + imapRes.Info + "'"
 			}
 			if info == "" {
-				info = "type `" + reflect.TypeOf(servResp) + "`"
+				info = "type `" + reflect.TypeOf(servResp).String() + "`"
 			}
 		}
 		if info == "" {
-			info = "type `" + reflect.TypeOf(res) + "`"
+			info = "type `" + reflect.TypeOf(res).String() + "`"
 		}
 
 		if !c.closed {
