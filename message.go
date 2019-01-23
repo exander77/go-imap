@@ -939,7 +939,7 @@ func (bs *BodyStructure) Format() (fields []interface{}) {
 		fields[2] = FormatParamList(bs.Params)
 
 		if bs.Id != "" {
-			fields[3] = bs.Id
+			fields[3] = Quoted(bs.Id)
 		}
 		if bs.Description != "" {
 			fields[4] = Quoted(bs.Description)
