@@ -217,11 +217,11 @@ func (c *conn) send() {
 				info = " tag " + imapRes.Tag + " '" + imapRes.Info + "'"
 			}
 			if info == "" {
-				info = "type `" + reflect.TypeOf(servResp).String() + "`"
+				info = " resp type `" + reflect.TypeOf(servResp.response).String() + "`"
 			}
 		}
 		if info == "" {
-			info = "type `" + reflect.TypeOf(res).String() + "`"
+			info = " type `" + reflect.TypeOf(res).String() + "`"
 		}
 
 		if !c.closed {
@@ -332,7 +332,7 @@ func (c *conn) serve() error {
 					Info: err.Error(),
 				}
 			} else {
-				c.s.ErrorLog.Println("cannot read command:", err)
+				c.s.ErrorLog.Println("cannot read command: fields ", fields, " :", err)
 				return err
 			}
 		} else {
