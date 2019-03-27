@@ -51,6 +51,54 @@ const (
 // COMPRESS).
 type ConnUpgrader func(conn net.Conn) (net.Conn, error)
 
+// WriterWithFields makes possible to pass fields to debug log
+type WriterWithFields interface {
+	// SetField add  or set a field
+	SetField(key, value string)
+
+	// Writer clears added or changed field
+	Writer() io.Writer
+}
+
+type debugWithFields struct {
+	io.Writer
+
+	local, remote WriterWithFields
+}
+
+// NewDebugWithFields contains debug writers with optional fields
+func NewDebugWithFields(local, remote WriterWithFields) io.Writer {
+	var w io.Writer
+	if local != nil {
+		w = local.Writer()
+	}
+	return &debugWithFields{Writer: w, local: local, remote: remote}
+}
+
+func (df *debugWithFields) withField(key, value string) {
+	if df.local != nil {
+		df.local.SetField(key, value)
+	}
+	if df.remote != nil {
+		df.remote.SetField(key, value)
+	}
+}
+
+func (df *debugWithFields) localWriter() io.Writer {
+	if df.local == nil {
+		return nil
+	}
+	df.Writer = df.local.Writer()
+	return df.Writer
+}
+
+func (df *debugWithFields) remoteWriter() io.Writer {
+	if df.remote == nil {
+		return nil
+	}
+	return df.remote.Writer()
+}
+
 type debugWriter struct {
 	io.Writer
 
@@ -112,6 +160,17 @@ func (c *Conn) init() {
 		localDebug, remoteDebug := c.debug, c.debug
 		if debug, ok := c.debug.(*debugWriter); ok {
 			localDebug, remoteDebug = debug.local, debug.remote
+		}
+
+		if debug, ok := c.debug.(*debugWithFields); ok {
+			if addr := c.LocalAddr(); addr != nil {
+				debug.withField("loc", addr.String())
+			}
+			if addr := c.RemoteAddr(); addr != nil {
+				debug.withField("rem", addr.String())
+			}
+
+			localDebug, remoteDebug = debug.localWriter(), debug.remoteWriter()
 		}
 
 		if localDebug != nil {
