@@ -302,41 +302,40 @@ func (s *Server) listenUpdates() (err error) {
 			res    imap.WriterTo
 		)
 
-		switch item := item.(type) {
-		case *backend.StatusUpdate:
-			update = &item.Update
-			res = item.StatusResp
-		case *backend.MailboxUpdate:
-			update = &item.Update
-			res = &responses.Select{Mailbox: item.MailboxStatus}
-		case *backend.MessageUpdate:
-			update = &item.Update
-
-			ch := make(chan *imap.Message, 1)
-			ch <- item.Message
-			close(ch)
-
-			res = &responses.Fetch{Messages: ch}
-		case *backend.ExpungeUpdate:
-			update = &item.Update
-
-			ch := make(chan uint32, 1)
-			ch <- item.SeqNum
-			close(ch)
-
-			res = &responses.Expunge{SeqNums: ch}
-		default:
-			s.ErrorLog.Printf("unhandled update: %T\n", item)
-		}
-
-		if update == nil || res == nil {
-			continue
-		}
-
-		sends := make(chan struct{})
-		wait := 0
 		s.locker.Lock()
+		wg := sync.WaitGroup{}
 		for conn := range s.conns {
+			switch item := item.(type) {
+			case *backend.StatusUpdate:
+				update = &item.Update
+				res = item.StatusResp
+			case *backend.MailboxUpdate:
+				update = &item.Update
+				res = &responses.Select{Mailbox: item.MailboxStatus}
+			case *backend.MessageUpdate:
+				update = &item.Update
+
+				ch := make(chan *imap.Message, 1)
+				ch <- item.Message
+				close(ch)
+
+				res = &responses.Fetch{Messages: ch}
+			case *backend.ExpungeUpdate:
+				update = &item.Update
+
+				ch := make(chan uint32, 1)
+				ch <- item.SeqNum
+				close(ch)
+
+				res = &responses.Expunge{SeqNums: ch}
+			default:
+				s.ErrorLog.Printf("unhandled update: %T\n", item)
+			}
+
+			if update == nil || res == nil {
+				continue
+			}
+
 			ctx := conn.Context()
 
 			if update.Username != "" && (ctx.User == nil || ctx.User.Username() != update.Username) {
@@ -352,33 +351,23 @@ func (s *Server) listenUpdates() (err error) {
 				}
 			}
 
-			conn := conn // Copy conn to a local variable
-			go func() {
-				done := make(chan struct{})
-				conn.Context().Responses <- &response{
-					response: res,
-					done:     done,
-				}
-				<-done
-				sends <- struct{}{}
-			}()
+			done := make(chan struct{})
+			conn.Context().Responses <- &response{
+				response: res,
+				done:     done,
+			}
 
-			wait++
+			wg.Add(1)
+			go func() {
+				<-done
+				wg.Done()
+			}()
 		}
 		s.locker.Unlock()
 
-		if wait > 0 {
-			go func() {
-				for done := 0; done < wait; done++ {
-					<-sends
-				}
-				close(sends)
+		wg.Wait()
 
-				backend.DoneUpdate(update)
-			}()
-		} else {
-			backend.DoneUpdate(update)
-		}
+		backend.DoneUpdate(update)
 	}
 }
 
