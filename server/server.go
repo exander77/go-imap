@@ -351,17 +351,16 @@ func (s *Server) listenUpdates() (err error) {
 				}
 			}
 
-			done := make(chan struct{})
-			conn.Context().Responses <- &response{
-				response: res,
-				done:     done,
-			}
-
 			wg.Add(1)
-			go func() {
+			go func(conn Conn, res imap.WriterTo) {
+				done := make(chan struct{})
+				conn.Context().Responses <- &response{
+					response: res,
+					done:     done,
+				}
 				<-done
 				wg.Done()
-			}()
+			}(conn, res)
 		}
 		s.locker.Unlock()
 
