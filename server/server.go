@@ -303,7 +303,7 @@ func (s *Server) listenUpdates() (err error) {
 		)
 
 		s.locker.Lock()
-		wg := sync.WaitGroup{}
+		wg := &sync.WaitGroup{}
 		for conn := range s.conns {
 			switch item := item.(type) {
 			case *backend.StatusUpdate:
@@ -364,9 +364,10 @@ func (s *Server) listenUpdates() (err error) {
 		}
 		s.locker.Unlock()
 
-		wg.Wait()
-
-		backend.DoneUpdate(update)
+		go func(wg *sync.WaitGroup) {
+			wg.Wait()
+			backend.DoneUpdate(update)
+		}(wg)
 	}
 }
 
