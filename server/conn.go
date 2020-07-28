@@ -63,6 +63,8 @@ type Context struct {
 type conn struct {
 	*imap.Conn
 
+	upgradeError func(error)
+
 	conn      Conn // With extensions overrides
 	s         *Server
 	ctx       *Context
@@ -87,6 +89,8 @@ func newConn(s *Server, c net.Conn) *conn {
 
 	conn := &conn{
 		Conn: imap.NewConn(c, r, w),
+
+		upgradeError: s.UpgradeError,
 
 		s: s,
 		ctx: &Context{
@@ -346,6 +350,11 @@ func (c *conn) serve(conn Conn) (err error) {
 			if up != nil && res.Type == imap.StatusRespOk {
 				if err := up.Upgrade(c.conn); err != nil {
 					c.s.ErrorLog.Println("cannot upgrade connection:", err)
+
+					if c.upgradeError != nil {
+						c.upgradeError(err)
+					}
+
 					return err
 				}
 			}

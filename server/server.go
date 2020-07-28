@@ -117,6 +117,8 @@ type Server struct {
 	// The maximum literal size, in bytes. Literals exceeding this size will be
 	// rejected. A value of zero disables the limit (this is the default).
 	MaxLiteralSize uint32
+
+	UpgradeError func(error)
 }
 
 // Create a new IMAP server from an existing listener.
