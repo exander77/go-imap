@@ -159,7 +159,7 @@ func (cmd *List) Handle(conn Conn) error {
 	}
 
 	ch := make(chan *imap.MailboxInfo)
-	res := &responses.List{Mailboxes: ch, Subscribed: cmd.Subscribed}
+	res := &responses.List{Mailboxes: ch, Subscribed: cmd.Subscribed, SpecialUse: cmd.SpecialUse}
 
 	done := make(chan error, 1)
 	go (func() {

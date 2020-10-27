@@ -12,6 +12,7 @@ import (
 type List struct {
 	Reference string
 	Mailbox   string
+	SpecialUse bool
 
 	Subscribed bool
 }
@@ -38,6 +39,16 @@ func (cmd *List) Parse(fields []interface{}) error {
 	}
 
 	dec := utf7.Encoding.NewDecoder()
+
+	if list, err := imap.ParseStringList(fields[0]); err == nil {
+	    if (len(list) > 0 && list[0] == "SPECIAL-USE") {
+		cmd.SpecialUse = true
+		fields = fields[1:]
+		if len(fields) < 2 {
+			return errors.New("No enough arguments")
+		}
+	    }
+	}
 
 	if mailbox, err := imap.ParseString(fields[0]); err != nil {
 		return err
